@@ -41,10 +41,14 @@ There are two ways to call a function from the original binary with this patcher
 
 `InterceptVmethod` places your own function on a vtable and gets you the original function.
 
+### constructors, destructors and virtual functions
+
 And now the most disgusting thing I have ever written:
 
 You know how you can't use the address of your own Constructor/Destructor/Virtual Functions to place them into the memory of the exe you're injecting to? Well, now you can.
 
 Instead of me explaining it all here complicatedly, just check Patcher.cpp for `InjectHook_Constructor_Init` and the corresponding `InjectHook_Constructor`, `InjectHook_Destructor_Init` its corresponding `InjectHook_Destructor`, and the same for `InjectHook_VirtualMethod_Init` and `InjectHook_VirtualMethod`. Even works for overloaded functions.
+
+Use the `HOOK_CALL` define to place a call at the address, and `HOOK_JUMP` to place a jump at the address.
 
 You're welcome.
