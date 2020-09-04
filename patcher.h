@@ -35,6 +35,8 @@ public:
 #define RET(n) { __asm push n __asm retn }
 #define ASM(name) void __declspec(naked) name(void)
 
+#define asm(...) __asm { __VA_ARGS__ }
+
 #define NOVMT __declspec(novtable)
 #define SETVMT(a) *((uintptr *)this) = (uintptr)a
 
@@ -51,38 +53,43 @@ public:
 int Unprotect_internal(void *address, size_t size);
 int Protect_internal(void *address, size_t);
 
-template<typename T> inline void Patch(uintptr_t address, T value)
+template<typename T> __forceinline void Patch(uintptr_t address, T value)
 {
 	Unprotect_internal((void *)address, sizeof(T));
 	*(T *)address = value;
 	Protect_internal((void *)address, sizeof(T));
 }
 
-inline void PatchBytes(uintptr_t address, void *value, size_t size)
+__forceinline void PatchByte(uintptr_t address, unsigned char value)
+{
+	Patch(address, value);
+}
+
+__forceinline void PatchBytes(uintptr_t address, void *value, size_t size)
 {
 	Unprotect_internal((void *)address, size);
 	memcpy((void *)address, value, size);
 	Protect_internal((void *)address, size);
 }
 
-inline void ReadBytes(uintptr_t address, void *out, size_t size)
+__forceinline void ReadBytes(uintptr_t address, void *out, size_t size)
 {
 	memcpy(out, (void *)address, size);
 }
 
-inline void SetBytes(uintptr_t address, int value, size_t size)
+__forceinline void SetBytes(uintptr_t address, int value, size_t size)
 {
 	Unprotect_internal((void *)address, size);
 	memset((void *)address, value, size);
 	Protect_internal((void *)address, size);
 }
 
-inline void Nop(uintptr_t address, size_t count = 1)
+__forceinline void Nop(uintptr_t address, size_t count = 1)
 {
 	SetBytes(address, 0x90, count);
 }
 
-inline void NopTo(uintptr_t address, uintptr_t to)
+__forceinline void NopTo(uintptr_t address, uintptr_t to)
 {
 	Nop(address, to - address);
 }
@@ -95,7 +102,7 @@ enum
 	HOOK_SIZE = 5,
 };
 
-template<typename T> inline void InjectHook(uintptr_t address, T hook, int type = PATCH_EXISTING)
+template<typename T> __forceinline void InjectHook(uintptr_t address, T hook, int type = PATCH_EXISTING)
 {
 	switch (type)
 	{
@@ -134,23 +141,23 @@ template<typename T> inline void InjectHook(uintptr_t address, T hook, int type 
 	}
 }
 
-inline void PatchJump(uintptr_t address, uintptr_t to)
+__forceinline void PatchJump(uintptr_t address, uintptr_t to)
 {
 	InjectHook(address, to, PATCH_JUMP);
 }
 
-inline void ExtractCall(void *dst, uintptr_t a)
+__forceinline void ExtractCall(void *dst, uintptr_t a)
 {
 	*(uintptr_t *)dst = (uintptr_t)(*(uintptr_t *)(a + 1) + a + 5);
 }
 
-template<typename T> inline void InterceptCall(void *dst, T func, uintptr_t a)
+template<typename T> __forceinline void InterceptCall(void *dst, T func, uintptr_t a)
 {
 	ExtractCall(dst, a);
 	InjectHook(a, func);
 }
 
-template<typename T> inline void InterceptVmethod(void *dst, T func, uintptr_t a)
+template<typename T> __forceinline void InterceptVmethod(void *dst, T func, uintptr_t a)
 {
 	*(uintptr_t *)dst = *(uintptr_t *)a;
 	Patch(a, func);
@@ -181,23 +188,23 @@ void InjectHook_ ## classname ## _Constructor_ ## offset (void) \
 #define InjectHook_Constructor(classname, offset) InjectHook_ ## classname ## _Constructor_ ## offset()
 
 #define InjectHook_Destructor_Init(classname, offset, type) \
-NAKED void classname ## _Destructor_ ## offset (classname *_) \
+static NAKED void classname ## _Destructor_ ## offset (classname *_) \
 { \
 	__asm { mov eax, end } \
 	_->~classname(); \
 	__asm { end: } \
 } \
 \
-uintptr_t classname ## _Destructor_ ## offset ## _Address; \
+static uintptr_t classname ## _Destructor_ ## offset ## _Address; \
 \
-ASM(classname ## _Destructor_ ## offset ## _HOOK_CALL) \
+static ASM(classname ## _Destructor_ ## offset ## _HOOK_CALL) \
 { \
 	__asm { push 0 } \
 	__asm { push offset + HOOK_SIZE } \
 	__asm { jmp classname ## _Destructor_ ## offset ## _Address } \
 } \
 \
-ASM(classname ## _Destructor_ ## offset ## _HOOK_JUMP) \
+static ASM(classname ## _Destructor_ ## offset ## _HOOK_JUMP) \
 { \
 	__asm { pop eax } \
 	__asm { push 0 } \
@@ -205,7 +212,7 @@ ASM(classname ## _Destructor_ ## offset ## _HOOK_JUMP) \
 	__asm { jmp classname ## _Destructor_ ## offset ## _Address } \
 } \
 \
-void InjectHook_ ## classname ## _Destructor_ ## offset (void) \
+static void InjectHook_ ## classname ## _Destructor_ ## offset (void) \
 { \
 	uintptr_t calladdr = (*(uintptr_t *)((uintptr_t)& classname ## _Destructor_ ## offset + 1)) - 5; \
 	uintptr_t dtoraddr; \
@@ -218,14 +225,14 @@ void InjectHook_ ## classname ## _Destructor_ ## offset (void) \
 #define InjectHook_Destructor(classname, offset) InjectHook_ ## classname ## _Destructor_ ## offset()
 
 #define InjectHook_VirtualMethod_Init(classname, funcname, offset, type, ...) \
-NAKED void classname ## __ ## funcname ## _ ## offset (classname *_) \
+static NAKED void classname ## __ ## funcname ## _ ## offset (classname *_) \
 { \
 	__asm { mov eax, end } \
 	_->classname::funcname(__VA_ARGS__); \
 	__asm { end: } \
 } \
 \
-void InjectHook_ ## classname ## __ ## funcname ## _ ## offset (void) \
+static void InjectHook_ ## classname ## __ ## funcname ## _ ## offset (void) \
 { \
 	uintptr_t calladdr = (*(uintptr_t *)((uintptr_t)& classname ## __ ## funcname ## _ ## offset + 1)) - 5; \
 	uintptr_t vmthdaddr; \
@@ -235,3 +242,22 @@ void InjectHook_ ## classname ## __ ## funcname ## _ ## offset (void) \
 }
 
 #define InjectHook_VirtualMethod(classname, funcname, offset) InjectHook_ ## classname ## __ ## funcname ## _ ## offset()
+
+#define Patch_VirtualMethod_Init(classname, funcname, offset, ...) \
+static NAKED void classname ## __ ## funcname ## _ ## offset (classname *_) \
+{ \
+	__asm { mov eax, end } \
+	_->classname::funcname(__VA_ARGS__); \
+	__asm { end: } \
+} \
+\
+static void Patch_ ## classname ## __ ## funcname ## _ ## offset (void) \
+{ \
+	uintptr_t calladdr = (*(uintptr_t *)((uintptr_t)& classname ## __ ## funcname ## _ ## offset + 1)) - 5; \
+	uintptr_t vmthdaddr; \
+	ExtractCall(&vmthdaddr, calladdr); \
+	Patch(offset, vmthdaddr); \
+\
+}
+
+#define Patch_VirtualMethod(classname, funcname, offset) Patch_ ## classname ## __ ## funcname ## _ ## offset()
