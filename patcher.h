@@ -35,14 +35,12 @@ public:
 #define RET(n) { __asm push n __asm retn }
 #define ASM(name) void __declspec(naked) name(void)
 
-#define asm(...) __asm { __VA_ARGS__ }
-
 #define NOVMT __declspec(novtable)
-#define SETVMT(a) *((uintptr *)this) = (uintptr)a
+#define SETVMT(a) *((uintptr_t *)this) = (uintptr_t)a
 
-#define FIELD(type, var, offset) *(type *)((byte *)var + offset)
+#define FIELD(type, var, offset) *(type *)((unsigned char *)var + offset)
 
-#pragma warning(disable:4731) // -- suppress C4731:"frame pointer register 'ebp' modified by inline assembly code"
+#pragma warning(disable : 4731) // -- suppress C4731:"frame pointer register 'ebp' modified by inline assembly code"
 
 #define XCALL(uAddr)			\
 	__asm { mov esp, ebp	}	\
@@ -65,11 +63,16 @@ __forceinline void PatchByte(uintptr_t address, unsigned char value)
 	Patch(address, value);
 }
 
-__forceinline void PatchBytes(uintptr_t address, void *value, size_t size)
+__forceinline void PatchBytes(uintptr_t address, unsigned char *value, size_t size)
 {
 	Unprotect_internal((void *)address, size);
 	memcpy((void *)address, value, size);
 	Protect_internal((void *)address, size);
+}
+
+template<size_t size> __forceinline void PatchBytes(uintptr_t address, unsigned char (&value)[size])
+{
+	PatchBytes(address, value, size);
 }
 
 __forceinline void ReadBytes(uintptr_t address, void *out, size_t size)
@@ -163,20 +166,28 @@ template<typename T> __forceinline void InterceptVmethod(void *dst, T func, uint
 	Patch(a, func);
 }
 
-#define HOOK_ARG(type) (type)0
+extern volatile uintptr_t arg;
+
+#define HOOK_ARG(type) (type)arg
 
 #define HOOK_CALL PATCH_CALL
 #define HOOK_JUMP PATCH_JUMP
 
+#define InjectHook_Overload(offset, funcname, type, rettype, ...) \
+InjectHook(offset, ( ## rettype ## (*)(__VA_ARGS__))& funcname, type)
+
+#define InjectHook_Overload_Member(offset, classname, funcname, type, rettype, ...) \
+InjectHook(offset, ( ## rettype ## (classname ## ::*)(__VA_ARGS__))& classname ## :: ## funcname, type)
+
 #define InjectHook_Constructor_Init(classname, offset, type, ...) \
-NAKED void classname ## _Constructor_ ## offset (classname *_) \
+static NAKED void classname ## _Constructor_ ## offset (classname *_) \
 { \
 	__asm { mov eax, end } \
 	::new (_) classname(__VA_ARGS__); \
 	__asm { end: } \
 } \
 \
-void InjectHook_ ## classname ## _Constructor_ ## offset (void) \
+static void InjectHook_ ## classname ## _Constructor_ ## offset (void) \
 { \
 	uintptr_t calladdr = (*(uintptr_t *)((uintptr_t)& classname ## _Constructor_ ## offset + 1)) - 5; \
 	uintptr_t ctoraddr; \

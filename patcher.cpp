@@ -23,6 +23,8 @@ void StaticPatcher::Apply()
 	ms_head = NULL;
 }
 
+volatile uintptr_t arg;
+
 static DWORD protect[2];
 
 int Unprotect_internal(void *address, size_t size)

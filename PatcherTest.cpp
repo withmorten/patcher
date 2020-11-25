@@ -1,5 +1,13 @@
 #include "patcher.h"
 
+void Method()
+{
+}
+
+void Method(int)
+{
+}
+
 struct Struct
 {
 	Struct() { }
@@ -33,5 +41,8 @@ STARTPATCHES
 	InjectHook_VirtualMethod(Struct, VMethod, 0x00000004);
 	Patch_VirtualMethod(Struct, VMethod, 0x00000006);
 
-	InjectHook(0x00000005, (void (Struct::*)(int))&Struct::Method);
+	// InjectHook(0x00000005, (void (Struct::*)(int))&Struct::Method);
+	InjectHook_Overload_Member(0x00000005, Struct, Method, HOOK_CALL, void, int);
+
+	InjectHook_Overload(0x00000007, Method, HOOK_CALL, void, int);
 ENDPATCHES
