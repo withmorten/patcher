@@ -23,7 +23,7 @@ void StaticPatcher::Apply()
 	ms_head = NULL;
 }
 
-volatile uintptr_t arg;
+volatile uintptr_t patcher_arg;
 
 static DWORD protect[2];
 

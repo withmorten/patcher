@@ -166,9 +166,9 @@ template<typename T> __forceinline void InterceptVmethod(void *dst, T func, uint
 	Patch(a, func);
 }
 
-extern volatile uintptr_t arg;
+extern volatile uintptr_t patcher_arg;
 
-#define HOOK_ARG(type) (type)arg
+#define HOOK_ARG(type) (type)patcher_arg
 
 #define HOOK_CALL PATCH_CALL
 #define HOOK_JUMP PATCH_JUMP
@@ -199,28 +199,11 @@ static void InjectHook_ ## classname ## _Constructor_ ## offset (void) \
 #define InjectHook_Constructor(classname, offset) InjectHook_ ## classname ## _Constructor_ ## offset()
 
 #define InjectHook_Destructor_Init(classname, offset, type) \
-static NAKED void classname ## _Destructor_ ## offset (classname *_) \
+static NAKED void classname ## _Destructor_ ## offset(classname *_) \
 { \
 	__asm { mov eax, end } \
-	_->~classname(); \
+	_->classname::~classname(); \
 	__asm { end: } \
-} \
-\
-static uintptr_t classname ## _Destructor_ ## offset ## _Address; \
-\
-static ASM(classname ## _Destructor_ ## offset ## _HOOK_CALL) \
-{ \
-	__asm { push 0 } \
-	__asm { push offset + HOOK_SIZE } \
-	__asm { jmp classname ## _Destructor_ ## offset ## _Address } \
-} \
-\
-static ASM(classname ## _Destructor_ ## offset ## _HOOK_JUMP) \
-{ \
-	__asm { pop eax } \
-	__asm { push 0 } \
-	__asm { push eax } \
-	__asm { jmp classname ## _Destructor_ ## offset ## _Address } \
 } \
 \
 static void InjectHook_ ## classname ## _Destructor_ ## offset (void) \
@@ -228,12 +211,30 @@ static void InjectHook_ ## classname ## _Destructor_ ## offset (void) \
 	uintptr_t calladdr = (*(uintptr_t *)((uintptr_t)& classname ## _Destructor_ ## offset + 1)) - 5; \
 	uintptr_t dtoraddr; \
 	ExtractCall(&dtoraddr, calladdr); \
-	classname ## _Destructor_ ## offset ## _Address = dtoraddr; \
-	InjectHook(offset, &classname ## _Destructor_ ## offset ## _ ## type, PATCH_JUMP); \
+	InjectHook(offset, dtoraddr, type); \
 \
 }
 
 #define InjectHook_Destructor(classname, offset) InjectHook_ ## classname ## _Destructor_ ## offset()
+
+#define InjectHook_VirtualDestructor_Init(classname, offset, type) \
+static NAKED void classname ## _VirtualDestructor_ ## offset (classname *_) \
+{ \
+	__asm { mov eax, end } \
+	_->classname::~classname(); \
+	__asm { end: } \
+} \
+\
+static void InjectHook_ ## classname ## _VirtualDestructor_ ## offset (void) \
+{ \
+	uintptr_t calladdr = (*(uintptr_t *)((uintptr_t)& classname ## _VirtualDestructor_ ## offset + 1)) - 5; \
+	uintptr_t vmthdaddr; \
+	ExtractCall(&vmthdaddr, calladdr); \
+	InjectHook(offset, vmthdaddr, type); \
+\
+}
+
+#define InjectHook_VirtualDestructor(classname, offset) InjectHook_ ## classname ## _VirtualDestructor_ ## offset()
 
 #define InjectHook_VirtualMethod_Init(classname, funcname, offset, type, ...) \
 static NAKED void classname ## __ ## funcname ## _ ## offset (classname *_) \
