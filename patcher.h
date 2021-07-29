@@ -168,10 +168,7 @@ template<typename T> __forceinline void InterceptVmethod(void *dst, T func, uint
 
 extern volatile uintptr_t patcher_arg;
 
-#define HOOK_ARG(type) (type)patcher_arg
-
-#define HOOK_CALL PATCH_CALL
-#define HOOK_JUMP PATCH_JUMP
+#define PATCHER_ARG(type) (type)patcher_arg
 
 #define InjectHook_Overload(offset, funcname, type, rettype, ...) \
 InjectHook(offset, ( ## rettype ## (*)(__VA_ARGS__))& funcname, type)
@@ -179,7 +176,7 @@ InjectHook(offset, ( ## rettype ## (*)(__VA_ARGS__))& funcname, type)
 #define InjectHook_Overload_Member(offset, classname, funcname, type, rettype, ...) \
 InjectHook(offset, ( ## rettype ## (classname ## ::*)(__VA_ARGS__))& classname ## :: ## funcname, type)
 
-#define InjectHook_Constructor_Init(classname, offset, type, ...) \
+#define InjectHook_Constructor_Init(offset, classname, type, ...) \
 static NAKED void classname ## _Constructor_ ## offset (classname *_) \
 { \
 	__asm { mov eax, end } \
@@ -196,9 +193,9 @@ static void InjectHook_ ## classname ## _Constructor_ ## offset (void) \
 \
 }
 
-#define InjectHook_Constructor(classname, offset) InjectHook_ ## classname ## _Constructor_ ## offset()
+#define InjectHook_Constructor(offset, classname) InjectHook_ ## classname ## _Constructor_ ## offset()
 
-#define InjectHook_Destructor_Init(classname, offset, type) \
+#define InjectHook_Destructor_Init(offset, classname, type) \
 static NAKED void classname ## _Destructor_ ## offset(classname *_) \
 { \
 	__asm { mov eax, end } \
@@ -215,9 +212,9 @@ static void InjectHook_ ## classname ## _Destructor_ ## offset (void) \
 \
 }
 
-#define InjectHook_Destructor(classname, offset) InjectHook_ ## classname ## _Destructor_ ## offset()
+#define InjectHook_Destructor(offset, classname) InjectHook_ ## classname ## _Destructor_ ## offset()
 
-#define InjectHook_VirtualDestructor_Init(classname, offset, type) \
+#define InjectHook_VirtualDestructor_Init(offset, classname, type) \
 static NAKED void classname ## _VirtualDestructor_ ## offset (classname *_) \
 { \
 	__asm { mov eax, end } \
@@ -234,9 +231,9 @@ static void InjectHook_ ## classname ## _VirtualDestructor_ ## offset (void) \
 \
 }
 
-#define InjectHook_VirtualDestructor(classname, offset) InjectHook_ ## classname ## _VirtualDestructor_ ## offset()
+#define InjectHook_VirtualDestructor(offset, classname) InjectHook_ ## classname ## _VirtualDestructor_ ## offset()
 
-#define InjectHook_VirtualMethod_Init(classname, funcname, offset, type, ...) \
+#define InjectHook_VirtualMethod_Init(offset, classname, funcname, type, ...) \
 static NAKED void classname ## __ ## funcname ## _ ## offset (classname *_) \
 { \
 	__asm { mov eax, end } \
@@ -253,9 +250,9 @@ static void InjectHook_ ## classname ## __ ## funcname ## _ ## offset (void) \
 \
 }
 
-#define InjectHook_VirtualMethod(classname, funcname, offset) InjectHook_ ## classname ## __ ## funcname ## _ ## offset()
+#define InjectHook_VirtualMethod(offset, classname, funcname) InjectHook_ ## classname ## __ ## funcname ## _ ## offset()
 
-#define Patch_VirtualMethod_Init(classname, funcname, offset, ...) \
+#define Patch_VirtualMethod_Init(offset, classname, funcname, ...) \
 static NAKED void classname ## __ ## funcname ## _ ## offset (classname *_) \
 { \
 	__asm { mov eax, end } \
@@ -272,4 +269,4 @@ static void Patch_ ## classname ## __ ## funcname ## _ ## offset (void) \
 \
 }
 
-#define Patch_VirtualMethod(classname, funcname, offset) Patch_ ## classname ## __ ## funcname ## _ ## offset()
+#define Patch_VirtualMethod(offset, classname, funcname) Patch_ ## classname ## __ ## funcname ## _ ## offset()
