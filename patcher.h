@@ -171,7 +171,7 @@ extern volatile uintptr_t patcher_arg;
 #define PATCHER_ARG(type) (type)patcher_arg
 
 #define InjectHook_Overload(offset, funcname, type, rettype, ...) \
-InjectHook(offset, ( ## rettype ## (*)(__VA_ARGS__))& funcname, type)
+InjectHook(offset, ( ## rettype ## (*)(__VA_ARGS__))funcname, type)
 
 #define InjectHook_Overload_Member(offset, classname, funcname, type, rettype, ...) \
 InjectHook(offset, ( ## rettype ## (classname ## ::*)(__VA_ARGS__))& classname ## :: ## funcname, type)
