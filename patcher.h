@@ -48,6 +48,11 @@ public:
 	__asm { mov eax, uAddr	}	\
 	__asm { jmp eax			}
 
+#define DSCALL(uAddr)					\
+	__asm { mov esp, ebp			}	\
+	__asm { pop ebp					}	\
+	__asm { jmp dword ptr ds:uAddr	}
+
 int Unprotect_internal(void *address, size_t size);
 int Protect_internal(void *address, size_t);
 
@@ -73,6 +78,11 @@ __forceinline void PatchBytes(uintptr_t address, unsigned char *value, size_t si
 template<size_t size> __forceinline void PatchBytes(uintptr_t address, unsigned char (&value)[size])
 {
 	PatchBytes(address, value, size);
+}
+
+__forceinline void PatchString(uintptr_t address, char *value)
+{
+	PatchBytes(address, (unsigned char *)value, strlen(value) + 1);
 }
 
 __forceinline void ReadBytes(uintptr_t address, void *out, size_t size)
