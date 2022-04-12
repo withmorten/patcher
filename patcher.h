@@ -82,7 +82,12 @@ template<size_t size> __forceinline void PatchBytes(uintptr_t address, unsigned 
 
 __forceinline void PatchString(uintptr_t address, char *value)
 {
-	PatchBytes(address, (unsigned char *)value, strlen(value) + 1);
+	PatchBytes(address, (unsigned char *)value, strlen(value) + sizeof(char));
+}
+
+__forceinline void PatchWideString(uintptr_t address, wchar_t *value)
+{
+	PatchBytes(address, (unsigned char *)value, wcslen(value) * sizeof(wchar_t) + sizeof(wchar_t));
 }
 
 __forceinline void ReadBytes(uintptr_t address, void *out, size_t size)
