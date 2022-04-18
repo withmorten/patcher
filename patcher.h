@@ -40,6 +40,14 @@ public:
 
 #define FIELD(type, var, offset) *(type *)((unsigned char *)var + offset)
 
+#define GETMEM8(offset) *(uint8_t *)(offset)
+#define GETMEM16(offset) *(uint16_t *)(offset)
+#define GETMEM32(offset) *(uint32_t *)(offset)
+
+#define MEMCMP8(offset, val) (GETMEM8(offset) == (uint8_t)(val))
+#define MEMCMP16(offset, val) (GETMEM16(offset) == (uint16_t)(val))
+#define MEMCMP32(offset, val) (GETMEM32(offset) == (uint32_t)(val))
+
 #pragma warning(disable : 4731) // -- suppress C4731:"frame pointer register 'ebp' modified by inline assembly code"
 
 #define XCALL(uAddr)			\
